@@ -1,0 +1,129 @@
+stages:
+  - build
+  - publish
+  - deploy
+
+variables:
+  TAG_LATEST: $CI_REGISTRY_IMAGE/$CI_COMMIT_REF_NAME:latest
+  TAG_COMMIT: $CI_REGISTRY_IMAGE/$CI_COMMIT_REF_NAME:$CI_COMMIT_SHORT_SHA
+  DOCKER_TLS_CERTDIR: ""
+
+api:
+  stage: build
+  tags:
+    - build
+  image: $CI_REGISTRY_IMAGE/api:latest
+  cache:
+    key: ${CI_COMMIT_REF_NAME}-api
+    policy: pull-push
+    paths:
+      - api/vendor/
+  script:
+    - time composer install -d api --no-interaction --ansi
+  artifacts:
+    name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
+    expire_in: 2 hour
+    paths:
+      - api/vendor/
+  only:
+    - dev
+    - master
+
+client:
+  stage: build
+  tags:
+    - build
+  image: $CI_REGISTRY_IMAGE/client:latest
+  cache:
+    key: ${CI_COMMIT_REF_NAME}-client
+    policy: pull-push
+    paths:
+      - client/node_modules/
+  script:
+    - time yarn --cwd client install
+    - node -v
+    - npm -v
+  artifacts:
+    name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
+    expire_in: 2 hour
+    paths:
+      - client/node_modules/
+  only:
+    - dev
+    - master
+
+admin:
+  stage: build
+  tags:
+    - build
+  image: $CI_REGISTRY_IMAGE/admin:latest
+  cache:
+    key: ${CI_COMMIT_REF_NAME}-admin
+    policy: pull-push
+    paths:
+      - admin/node_modules/
+  script:
+    - time yarn --cwd admin install
+    - node -v
+    - npm -v
+  artifacts:
+    name: "$CI_JOB_NAME-$CI_COMMIT_REF_NAME"
+    expire_in: 2 hour
+    paths:
+      - admin/node_modules/
+  only:
+    - dev
+    - master
+
+publish:
+  image: docker:latest
+  stage: publish
+  dependencies:
+    - api
+    - client
+    - admin
+  tags:
+    - publish
+  services:
+    - docker:dind
+  script:
+    - docker build -t $TAG_COMMIT -t $TAG_LATEST -t $CI_REGISTRY_IMAGE/nginx:latest docker/nginx
+    - docker build -t $TAG_COMMIT -t $TAG_LATEST -t $CI_REGISTRY_IMAGE/php-fpm:latest docker/php-fpm
+    - docker build -t $TAG_COMMIT -t $TAG_LATEST -t $CI_REGISTRY_IMAGE/supervisor:latest docker/supervisor
+    - docker build -t $TAG_COMMIT -t $TAG_LATEST -t $CI_REGISTRY_IMAGE/client:latest docker/client
+    - docker build -t $TAG_COMMIT -t $TAG_LATEST -t $CI_REGISTRY_IMAGE/admin:latest docker/admin
+    - docker build -t $TAG_COMMIT -t $TAG_LATEST -t $CI_REGISTRY_IMAGE/postgres:latest docker/postgres
+    - docker build -t $TAG_COMMIT -t $TAG_LATEST -t $CI_REGISTRY_IMAGE/redis:latest docker/redis
+    - docker build -t $TAG_COMMIT -t $TAG_LATEST -t $CI_REGISTRY_IMAGE/api:latest docker/api
+    - docker build -t $TAG_COMMIT -t $TAG_LATEST -t $CI_REGISTRY_IMAGE/elasticsearch:latest docker/elasticsearch
+    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $CI_REGISTRY
+    - docker push $TAG_COMMIT
+    - docker push $TAG_LATEST
+
+dev:
+  image: alpine:latest
+  stage: deploy
+  tags:
+    - deploy
+  script:
+    - chmod og= $DEV_ID_RSA
+    - apk update && apk add openssh-client
+    - cat $DEV_API_ENV > .env
+    - cat docker-compose.dev.yml > docker-compose.yml
+    - scp -pr -i $DEV_ID_RSA -o StrictHostKeyChecking=no docker-compose.yml $DEV_SERVER_USER@$DEV_SERVER_IP:$DEV_SERVER_PATH
+    - scp -pr -i $DEV_ID_RSA -o StrictHostKeyChecking=no .env $DEV_SERVER_USER@$DEV_SERVER_IP:$DEV_SERVER_PATH/api
+    - ssh -i $DEV_ID_RSA -o StrictHostKeyChecking=no $DEV_SERVER_USER@$DEV_SERVER_IP
+      "
+      cd $DEV_SERVER_PATH &&
+      docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $CI_REGISTRY &&
+      docker pull $TAG_COMMIT &&
+      docker container rm -f nginx php-fpm supervisor client admin postgres redis api elasticsearch || true &&
+      docker run -d -p 80:80 --name nginx php-fpm supervisor client admin postgres redis api elasticsearch $TAG_COMMIT
+      "
+    - exit 0
+  environment:
+    name: production
+    url: $DEV_HOST
+  only:
+    - dev
+  when: manual

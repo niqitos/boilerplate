@@ -1,0 +1,203 @@
+version: '3'
+
+######### Services ###################################
+
+services:
+  # Server container
+  nginx:
+    build:
+      context: docker/nginx
+      dockerfile: Dockerfile
+    volumes:
+      - ./:/var/www
+      - ./docker/nginx/templates:/etc/nginx/templates/
+      - ./docker/nginx/logs:/var/log/nginx
+    environment:
+      NGINX_ENVSUBST_TEMPLATE_SUFFIX: .template
+      API_HOST: api.boilerplate.local
+      ADMIN_HOST: admin.boilerplate.local
+    ports:
+      # Nuxt port
+      - 80:80
+      # Laravel port
+      - 81:81
+    links:
+      - client
+      - admin
+      - php-fpm
+
+  # PHP FastCGI Process Manager container
+  php-fpm:
+    build:
+      context: docker/php-fpm
+      dockerfile: Dockerfile
+    volumes:
+      - ./api:/var/www/api
+    environment:
+      # If you down want to use xDebug, set remote_enable=0
+      XDEBUG_CONFIG: "remote_enable=1"
+      PHP_IDE_CONFIG: "serverName=Docker"
+    links:
+      - postgres
+      - redis
+    expose:
+      - 81
+    labels:
+      traefik.frontend.rule: PathPrefixStrip:/api
+      traefik.port: 81
+
+  # Supervisor container (schedule and queue runner)
+  supervisor:
+    build:
+      context: docker/supervisor
+      dockerfile: Dockerfile
+    volumes:
+      - ./:/var/www/
+      - ./docker/supervisor/conf.d:/etc/supervisor/conf.d
+      - ./docker/supervisor/logs:/var/log
+    links:
+      - postgres
+      - redis
+
+  # Client app container
+  client:
+    build:
+      context: docker/client
+      dockerfile: Dockerfile
+    volumes:
+      - ./client:/var/www/client
+    expose:
+      - 80
+    environment:
+      NUXT_HOST: 0.0.0.0
+      NUXT_ENV: local
+      APP_NAME: LOGO
+      APP_ESTABLISHED: 2021
+      APP_URL: http://boilerplate.local
+      API_URL: http://nginx:81/
+      API_CLIENT_URL: http://api.boilerplate.local
+      NO_IMAGE_URL: http://api.boilerplate.local/storage/images/no-image.webp
+      DEFAULT_LOCALE: ru
+      FALLBACK_LOCALE: ru
+      GOOGLE_MAPS_API_KEY: GOOGLE_MAPS_API_KEY
+      GOOGLE_ANALYTICS_ID: UA_XXX_X
+      GOOGLE_TAG_MANAGER_ID: GTM_XXXXXXX
+    labels:
+      traefik.frontend.rule: PathPrefixStrip:/
+      traefik.port: 80
+
+  # Admin app container
+  admin:
+    build:
+      context: docker/admin
+      dockerfile: Dockerfile
+    volumes:
+      - ./admin:/var/www/admin
+    expose:
+      - 80
+    environment:
+      NUXT_HOST: 0.0.0.0
+      NUXT_ENV: local
+      APP_NAME: LOGO
+      APP_URL: http://admin.boilerplate.local
+      CLIENT_URL: http://boilerplate.local
+      API_URL: http://nginx:81/admin/
+      API_CLIENT_URL: http://api.boilerplate.local/admin
+      NO_IMAGE_URL: http://api.boilerplate.local/storage/images/no-image.webp
+      DEFAULT_LOCALE: ru
+    labels:
+      traefik.frontend.rule: PathPrefixStrip:/admin
+      traefik.port: 80
+
+  # PostgreSQL database container
+  postgres:
+    build:
+      context: docker/postgres
+      dockerfile: Dockerfile
+    volumes:
+      # Database volume
+      - database:/var/lib/postgresql/data
+      # Temp volume to allow using dumps
+      - ./docker/postgres/dumps/:/tmp/
+    ports:
+      - 5432:5432
+    environment:
+      - LC_ALL=C.UTF-8
+      - POSTGRES_DB=app
+      - POSTGRES_USER=app
+      - POSTGRES_PASSWORD=app
+
+  # Redis container
+  redis:
+    build:
+      context: docker/redis
+      dockerfile: Dockerfile
+    volumes:
+      - redis:/data
+      - ./docker/redis/redis.conf:/data/redis.conf
+    ports:
+      - 6379:6379
+
+  # Node command line container
+  node-cli:
+    build:
+      context: docker/node-cli
+      dockerfile: Dockerfile
+    volumes:
+      - ./client:/var/www/client
+      - ./admin:/var/www/admin
+    tty: true
+
+  # PHP Command line container
+  api:
+    build:
+      context: docker/api
+      dockerfile: Dockerfile
+    volumes:
+      - ./api:/var/www/api
+    environment:
+      # If you down want to use xDebug, set remote_enable=0
+      XDEBUG_CONFIG: "remote_enable=1"
+      PHP_IDE_CONFIG: "serverName=Docker"
+    links:
+      - postgres
+      - redis
+    tty: true
+
+  proxy:
+    build:
+      context: docker/api
+      dockerfile: Dockerfile
+    command: --docker
+    ports:
+      - "80:80"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  elasticsearch:
+    build:
+      context: docker/elasticsearch
+      dockerfile: Dockerfile
+    volumes:
+      - ./docker/elasticsearch/data:/usr/share/elasticsearch/data
+    environment:
+      - node.name=elasticsearch
+      - discovery.seed_hosts=elasticsearch
+      - cluster.initial_master_nodes=elasticsearch
+      - cluster.name=docker-cluster
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - 9200:9200
+
+######### Volumes ###################################
+
+volumes:
+  database:
+    driver: local
+  redis:
+    driver: local
