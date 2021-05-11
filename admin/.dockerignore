@@ -1,0 +1,6 @@
+dist/
+.nuxt/
+node_modules/
+buildspec/
+cloud-formation/
+scripts/

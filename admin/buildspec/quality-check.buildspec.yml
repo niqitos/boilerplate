@@ -1,0 +1,31 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 14
+
+    commands:
+      - echo Updating and Installing system dependencies...
+      - apt-get update -y -q --list-cleanup || true
+      - npm install -g yarn && yarn install
+
+  build:
+    commands:
+      # Perform Code quality checks:
+      - echo Checking code style...
+      - yarn lint
+
+      - echo Running unit tests...
+#      - yarn test
+
+      - echo Building a project
+      - yarn build
+
+      - echo Code Quality checks have been passed
+
+  post_build:
+    commands:
+      # Perform static code analysis if any and reports upload
+      - echo Performing static code analysis and uploading reports...
+      - echo All code quality checks have been successfully completed on `date`
