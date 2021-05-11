@@ -1,9 +1,5 @@
 version: 0.2
 
-env:
-  variables:
-    APP_ENV_CONFIGURATION: ""
-
 phases:
   install:
     runtime-versions:
@@ -11,9 +7,7 @@ phases:
 
     commands:
       - echo Updating and Installing system dependencies...
-      # Temporary fix. TODO: clean it up...
-      - apt-get update -y -q --list-cleanup || true && apt-get install -y -q -f xvfb libx11-xcb1 libxrandr2 libasound2 libpangocairo-1.0-0 libatk1.0-0 libatk-bridge2.0-0 libgtk-3-0 libnss3 libxss1
-
+      - apt-get update -y -q --list-cleanup || true
       - npm install -g yarn && yarn install
 
   build:
@@ -24,6 +18,9 @@ phases:
 
       - echo Running unit tests...
 #      - yarn test
+
+      - echo Building a project
+      - yarn build
 
       - echo Code Quality checks have been passed
 

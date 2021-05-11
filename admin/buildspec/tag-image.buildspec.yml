@@ -16,10 +16,13 @@ phases:
 
     commands:
       # Update system packages
-      # TODO: clean it up or lease as is...
       - apt-get update -y -q --list-cleanup || true
   build:
     commands:
       - echo Docker image tag update started on `date`
       - bash ./scripts/update-image-tag.sh
       - echo Tag update completed on `date`
+
+artifacts:
+  files:
+    - image-def.json

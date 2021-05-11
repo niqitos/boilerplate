@@ -19,7 +19,6 @@ phases:
 
     commands:
       # Update system packages
-      # TODO: clean it up or lease as is...
       - apt-get update -y -q --list-cleanup || true
   build:
     commands:
