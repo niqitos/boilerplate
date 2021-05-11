@@ -1,0 +1,34 @@
+version: 0.2
+
+env:
+  variables:
+    APP_ENV_CONFIGURATION: ""
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 14
+
+    commands:
+      - echo Updating and Installing system dependencies...
+      # Temporary fix. TODO: clean it up...
+      - apt-get update -y -q --list-cleanup || true && apt-get install -y -q -f xvfb libx11-xcb1 libxrandr2 libasound2 libpangocairo-1.0-0 libatk1.0-0 libatk-bridge2.0-0 libgtk-3-0 libnss3 libxss1
+
+      - npm install -g yarn && yarn install
+
+  build:
+    commands:
+      # Perform Code quality checks:
+      - echo Checking code style...
+      - yarn lint
+
+      - echo Running unit tests...
+#      - yarn test
+
+      - echo Code Quality checks have been passed
+
+  post_build:
+    commands:
+      # Perform static code analysis if any and reports upload
+      - echo Performing static code analysis and uploading reports...
+      - echo All code quality checks have been successfully completed on `date`

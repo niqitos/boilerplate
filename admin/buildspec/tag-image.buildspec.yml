@@ -1,0 +1,25 @@
+version: 0.2
+
+env:
+  variables:
+    DOCKER_REPOSITORY_NAME: ""
+    DOCKER_REGISTRY_URL: ""
+    DOCKER_REGISTRY_REGION: "us-east-1"
+    DOCKER_PREV_ENV_TAG: "dev"
+    ADD_DOCKER_LATEST_TAG: "true"
+    DOCKER_ENV_TAG: "production"
+
+phases:
+  install:
+    runtime-versions:
+      docker: 19
+
+    commands:
+      # Update system packages
+      # TODO: clean it up or lease as is...
+      - apt-get update -y -q --list-cleanup || true
+  build:
+    commands:
+      - echo Docker image tag update started on `date`
+      - bash ./scripts/update-image-tag.sh
+      - echo Tag update completed on `date`

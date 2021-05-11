@@ -1,0 +1,32 @@
+version: 0.2
+
+env:
+  variables:
+    ENV_CONFIGURATION: ""
+
+    BASE_IMAGES_REGISTRY: ""
+    BASE_IMAGES_REGISTRY_REGION: ""
+
+    DOCKER_REPOSITORY_NAME: ""
+    DOCKER_REGISTRY_URL: ""
+    DOCKER_REGISTRY_REGION: "us-east-1"
+    DOCKER_ENV_TAG: "dev"
+
+phases:
+  install:
+    runtime-versions:
+      docker: 19
+
+    commands:
+      # Update system packages
+      # TODO: clean it up or lease as is...
+      - apt-get update -y -q --list-cleanup || true
+  build:
+    commands:
+      - echo Docker image build started on `date`
+      - bash ./scripts/build-and-publish.sh
+      - echo Build completed on `date`
+
+artifacts:
+  files:
+    - image-def.json
