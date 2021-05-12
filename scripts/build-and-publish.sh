@@ -23,8 +23,10 @@ DOCKER_COMMIT_TAG=$(echo "$CODEBUILD_RESOLVED_SOURCE_VERSION" | cut -c 1-7)
 #DOCKER_FILE_PATH="Dockerfile"
 IMAGE_DEF_FILE_NAME="image-def.json"
 
+PROFILE_NAME="default"
+
 # Login in AWS container registry with your AWS credentials
-aws ecr get-login-password --region "${DOCKER_REGISTRY_REGION:-$AWS_REGION}" | docker login --username AWS --password-stdin "$DOCKER_REGISTRY_URL"
+aws ecr get-login-password --region "${DOCKER_REGISTRY_REGION:-$AWS_REGION}" --profile "$PROFILE_NAME" | docker login --username AWS --password-stdin "$DOCKER_REGISTRY_URL"
 
 # Login in a common/base images Container Registry within other account if registry differs
 if [ -n "$BASE_IMAGES_REGISTRY" ]; then
