@@ -3,6 +3,7 @@ version: 0.2
 env:
   variables:
     ENV_CONFIGURATION: ""
+    APP_NAME: ""
 
     BASE_IMAGES_REGISTRY: ""
     BASE_IMAGES_REGISTRY_REGION: ""
@@ -23,7 +24,7 @@ phases:
   build:
     commands:
       - echo Docker image build started on `date`
-      - bash ./scripts/build-and-publish.sh
+      - cd ./${APP_NAME} && bash ./scripts/build-and-publish.sh
       - echo Build completed on `date`
 
 artifacts:

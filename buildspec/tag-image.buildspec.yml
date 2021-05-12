@@ -2,6 +2,7 @@ version: 0.2
 
 env:
   variables:
+    APP_NAME: ""
     DOCKER_REPOSITORY_NAME: ""
     DOCKER_REGISTRY_URL: ""
     DOCKER_REGISTRY_REGION: "us-east-1"
@@ -20,7 +21,7 @@ phases:
   build:
     commands:
       - echo Docker image tag update started on `date`
-      - bash ./scripts/update-image-tag.sh
+      - cd ./${APP_NAME} && bash ./scripts/update-image-tag.sh
       - echo Tag update completed on `date`
 
 artifacts:

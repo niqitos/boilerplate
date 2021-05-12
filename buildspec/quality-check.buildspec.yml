@@ -1,5 +1,9 @@
 version: 0.2
 
+env:
+  variables:
+    APP_NAME: ""
+
 phases:
   install:
     runtime-versions:
@@ -14,6 +18,7 @@ phases:
     commands:
       # Perform Code quality checks:
       - echo Checking code style...
+      - cd ./${APP_NAME}
       - yarn lint
 
       - echo Running unit tests...
