@@ -1,6 +1,7 @@
 require('dotenv').config()
 
 export default {
+  rootDir: '.',
   // Global page headers (https://go.nuxtjs.dev/config-head)
   head: {
     title: 'client',
